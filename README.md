@@ -16,4 +16,4 @@ If there are such rows it will broadcast them again.
 
 Any new worker/consumer that just spawned and thus did not listen or receive any task will call `get_task(consumerId)` to check for pending tasks.
 
-Consumer should after spawning listen on the designated namespace (`eventChannelName`) for pending tasks.
+Consumer should listen after spawning on the designated namespace (`eventChannelName`) for pending tasks.
