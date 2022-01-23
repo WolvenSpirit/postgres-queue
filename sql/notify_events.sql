@@ -6,5 +6,7 @@ CREATE TABLE IF NOT EXISTS notify_events
     consumer    VARCHAR(255)    DEFAULT NULL,
     ack         BOOLEAN         DEFAULT NULL,
     data        TEXT            NOT NULL,
-    created     TIMESTAMP       DEFAULT NOW()
+    created     TIMESTAMP       DEFAULT NOW(),
+    duration    NUMERIC(9,2)    DEFAULT NULL,
+    completed   TIMESTAMP       DEFAULT NULL    
 );
