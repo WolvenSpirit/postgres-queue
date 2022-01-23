@@ -1,0 +1,1 @@
+create type get_task_return AS (eventId int, config text);
