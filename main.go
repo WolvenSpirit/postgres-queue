@@ -16,53 +16,95 @@ import (
 )
 
 var (
-	addr       string
-	dbUser     string
-	dbPass     string
-	dbHost     string
-	dbName     string
-	dbsslMode  string
-	DB         *sql.DB
-	listener   *pq.Listener
-	eventsFlag string
-	events     []string
+	addr         string
+	dbUser       string
+	dbPass       string
+	dbHost       string
+	dbName       string
+	dbsslMode    string
+	DB           *sql.DB
+	listener     *pq.Listener
+	eventsFlag   string
+	events       []string
+	LStdout      *log.Logger
+	LStderr      *log.Logger
+	consumerName string
 )
 
-func listenNotifyEvents(dsn string) {
+const (
+	Channel01 = "Channel01"
+	Channel02 = "Channel02"
+	Channel03 = "Channel03"
+	Channel04 = "Channel04"
+	Channel05 = "Channel05"
+	Channel06 = "Channel06"
+	Channel07 = "Channel07"
+	Channel08 = "Channel08"
+	Channel09 = "Channel09"
+)
+
+func loggerInit() {
+	LStdout = log.New(os.Stdout, "\033[32m ", log.Ldate|log.Ltime)
+	LStderr = log.New(os.Stderr, "\033[31m ", log.Ldate|log.Ltime)
+}
+
+func listenNotifyEvents(dsn string, consumerName string) {
 	listener = pq.NewListener(dsn, time.Second*1, time.Second*120, func(event pq.ListenerEventType, err error) {
 		if event == pq.ListenerEventConnected {
-			log.Println("pq listener connected")
+			LStdout.Println("pq listener connected")
 		}
 		if event == pq.ListenerEventConnectionAttemptFailed {
-			log.Println("pq listener connection attempt failed")
+			LStderr.Println("pq listener connection attempt failed")
 		}
 		if event == pq.ListenerEventDisconnected {
-			log.Println("pq listener disconnected")
+			LStdout.Println("pq listener disconnected")
 		}
 		if event == pq.ListenerEventReconnected {
-			log.Println("pq listener reconnected")
+			LStdout.Println("pq listener reconnected")
 		}
 		if err != nil {
-			log.Println(err.Error())
+			LStderr.Println(err.Error())
 		}
 	})
 	for k := range events {
 		if err := listener.Listen(events[k]); err != nil {
-			log.Println(err.Error())
+			LStderr.Println(err.Error())
 		}
 	}
 	go func() {
 		for {
 			select {
 			case b := <-listener.Notify:
-				log.Printf("channel [%s]: %s", b.Channel, b.Extra)
-				row := DB.QueryRow(fmt.Sprintf("select ack(%s,'%s');", b.Extra, "Go-Consumer-01"))
+				LStdout.Printf("channel [%s]: %s", b.Channel, b.Extra)
+				row := DB.QueryRow(fmt.Sprintf("select ack(%s,'%s');", b.Extra, consumerName))
 				data := new(interface{})
 				if err := row.Scan(&data); err != nil {
-					log.Println("scan: ", err.Error())
+					LStderr.Println("scan: ", err.Error())
 				}
 				// TODO spawn task with deadline set depending on channel
-				log.Println(((*data).(string)))
+				LStdout.Println(((*data).(string)))
+				// TODO Spawn tasks of type according to channel
+				switch b.Channel {
+				case Channel01:
+					go DemoTask((*data).(string), b.Extra)
+				case Channel02:
+				case Channel03:
+				case Channel04:
+				case Channel05:
+				case Channel06:
+				case Channel07:
+				case Channel08:
+				case Channel09:
+				default:
+					for k := range events {
+						if events[k] == b.Channel {
+							// TODO
+							// custom tasks can be declared to be owned by an event
+							// we will use event name as key to access the task function
+						}
+					}
+					LStderr.Println("Channel not supported ", b.Channel)
+				}
 			default:
 				time.Sleep(time.Second * 1)
 			}
@@ -75,13 +117,13 @@ func connectDB(user, pass, host, database, sslMode string) {
 	driverName := "postgres"
 	url := fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=%s", driverName, user, pass, host, database, sslMode)
 	if DB, err = sql.Open(driverName, url); err != nil {
-		log.Println("sql.Open: ", err.Error())
+		LStderr.Println("sql.Open: ", err.Error())
 	}
 	if err = DB.Ping(); err != nil {
-		log.Println("Failed to establish database connection")
+		LStderr.Println("Failed to establish database connection")
 	}
 	fmt.Println("open postgres connections:", DB.Stats().OpenConnections)
-	listenNotifyEvents(url)
+	listenNotifyEvents(url, consumerName)
 }
 
 func defineFlags() {
@@ -92,6 +134,7 @@ func defineFlags() {
 	flag.StringVar(&dbName, "dbname", "shared_db01", "database name")
 	flag.StringVar(&dbsslMode, "dbsslmode", "require", "database sslMode")
 	flag.StringVar(&eventsFlag, "notify", "basic,fast", "pg_notify event namespace")
+	flag.StringVar(&consumerName, "consumer-name", "task-spawner", "consumer name that acks and spawns tasks")
 }
 
 func listen(addr string, mux *http.ServeMux) *http.Server {
@@ -100,7 +143,7 @@ func listen(addr string, mux *http.ServeMux) *http.Server {
 	go func() {
 		s.ListenAndServe()
 	}()
-	fmt.Println("Started listening on ", addr)
+	LStdout.Println("Started listening on ", addr)
 	return &s
 }
 
@@ -120,9 +163,11 @@ func registerHandlers(mux *http.ServeMux, handlers map[string]http.HandlerFunc) 
 }
 
 func main() {
+	loggerInit()
 	defineFlags()
 	flag.Parse()
 	events = strings.Split(eventsFlag, ",")
+	events = append(events, []string{Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09}...)
 	sigInt := make(chan os.Signal, 1)
 	signal.Notify(sigInt, os.Interrupt)
 	mux := new(http.ServeMux)
