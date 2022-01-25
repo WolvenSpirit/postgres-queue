@@ -7,11 +7,16 @@ import (
 	"time"
 )
 
+const (
+	StatusEnded   = 0
+	StatusOngoing = 1
+)
+
 type Scheduler struct {
 	Ctx                context.Context
 	MaxTasks           int
 	TaskDeadline       time.Duration
-	DefinedTasks       map[string]func(payload, id string, status *chan int)
+	DefinedTasks       map[string]Task
 	Ongoing            int
 	Lock               sync.Mutex
 	MaxConcurrentTasks int

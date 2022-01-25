@@ -1,3 +1,8 @@
+/*
+*	Add handlers for tasks in this file
+*   - A handler should be of type Task
+*	- Should properly flag when it started running and when it finishes via the constants `StatusOngoing` and `StatusEnded`                                     `
+ */
 package main
 
 import (
@@ -6,14 +11,20 @@ import (
 	"time"
 )
 
+type Task func(payload string, eventId string, status *chan int)
+
 type DemoTaskPayload struct {
 	PrintThis string
 }
 
-const (
-	StatusEnded   = 0
-	StatusOngoing = 1
-)
+// MapTask add your specific task to a channel
+func MapTask() {
+	sched.DefinedTasks["Channel01"] = DemoTask // We map DemoTask defined below to pg_notify Channel01
+}
+
+/*
+*	Declare new tasks of type Task below
+ */
 
 func DemoTask(payload string, eventId string, status *chan int) {
 	(*status) <- StatusOngoing

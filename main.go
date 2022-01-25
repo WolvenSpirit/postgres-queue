@@ -84,7 +84,6 @@ func listenNotifyEvents(dsn string, consumerName string) {
 				}
 				// TODO spawn task with deadline set depending on channel
 				LStdout.Println(((*data).(string)))
-				// TODO Spawn tasks of type according to channel
 				go sched.NewTask((*data).(string), b.Extra, b.Channel)
 			default:
 				time.Sleep(time.Second * 1)
@@ -145,8 +144,8 @@ func registerHandlers(mux *http.ServeMux, handlers map[string]http.HandlerFunc) 
 
 func main() {
 	sched = &Scheduler{MaxConcurrentTasks: 9, TaskDeadline: 120, RetryAfter: time.Second * 9}
-	sched.DefinedTasks = make(map[string]func(payload string, id string, status *chan int))
-	sched.DefinedTasks["Channel01"] = DemoTask
+	sched.DefinedTasks = make(map[string]Task)
+	MapTask()
 	loggerInit()
 	defineFlags()
 	flag.Parse()
