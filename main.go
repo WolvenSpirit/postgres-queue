@@ -29,6 +29,7 @@ var (
 	LStdout      *log.Logger
 	LStderr      *log.Logger
 	consumerName string
+	sched        *Scheduler
 )
 
 const (
@@ -84,27 +85,7 @@ func listenNotifyEvents(dsn string, consumerName string) {
 				// TODO spawn task with deadline set depending on channel
 				LStdout.Println(((*data).(string)))
 				// TODO Spawn tasks of type according to channel
-				switch b.Channel {
-				case Channel01:
-					go DemoTask((*data).(string), b.Extra)
-				case Channel02:
-				case Channel03:
-				case Channel04:
-				case Channel05:
-				case Channel06:
-				case Channel07:
-				case Channel08:
-				case Channel09:
-				default:
-					for k := range events {
-						if events[k] == b.Channel {
-							// TODO
-							// custom tasks can be declared to be owned by an event
-							// we will use event name as key to access the task function
-						}
-					}
-					LStderr.Println("Channel not supported ", b.Channel)
-				}
+				go sched.NewTask((*data).(string), b.Extra, b.Channel)
 			default:
 				time.Sleep(time.Second * 1)
 			}
@@ -163,6 +144,9 @@ func registerHandlers(mux *http.ServeMux, handlers map[string]http.HandlerFunc) 
 }
 
 func main() {
+	sched = &Scheduler{MaxConcurrentTasks: 9, TaskDeadline: 120, RetryAfter: time.Second * 9}
+	sched.DefinedTasks = make(map[string]func(payload string, id string, status *chan int))
+	sched.DefinedTasks["Channel01"] = DemoTask
 	loggerInit()
 	defineFlags()
 	flag.Parse()

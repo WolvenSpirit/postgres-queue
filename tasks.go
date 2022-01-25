@@ -10,7 +10,13 @@ type DemoTaskPayload struct {
 	PrintThis string
 }
 
-func DemoTask(payload string, eventId string) {
+const (
+	StatusEnded   = 0
+	StatusOngoing = 1
+)
+
+func DemoTask(payload string, eventId string, status *chan int) {
+	(*status) <- StatusOngoing
 	now := time.Now()
 	j := DemoTaskPayload{}
 	if err := json.Unmarshal([]byte(payload), &j); err != nil {
@@ -23,4 +29,5 @@ func DemoTask(payload string, eventId string) {
 		LStderr.Println(err.Error())
 	}
 	LStdout.Printf("DemoTask finished - eventId: %s - duration %fs\n", eventId, t)
+	(*status) <- StatusEnded
 }
