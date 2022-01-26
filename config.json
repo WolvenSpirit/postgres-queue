@@ -1,0 +1,22 @@
+{
+    "NotifyListener": {
+        "minReconnectInterval": 1,
+        "maxReconnectInterval": 9
+    },
+    "TaskRunner" :{
+        "MaxConcurrentTasks": 9,
+        "TaskDeadline": 120,
+        "RetryAfter": 9
+    },
+    "Channels":[
+        "Channel01",
+        "Channel02",
+        "Channel03",
+        "Channel04",
+        "Channel05",
+        "Channel06",
+        "Channel07",
+        "Channel08",
+        "Channel09"
+    ]
+}

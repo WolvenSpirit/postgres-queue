@@ -30,19 +30,10 @@ var (
 	LStderr      *log.Logger
 	consumerName string
 	sched        *Scheduler
+	cfg          Config
 )
 
-const (
-	Channel01 = "Channel01"
-	Channel02 = "Channel02"
-	Channel03 = "Channel03"
-	Channel04 = "Channel04"
-	Channel05 = "Channel05"
-	Channel06 = "Channel06"
-	Channel07 = "Channel07"
-	Channel08 = "Channel08"
-	Channel09 = "Channel09"
-)
+const ()
 
 func loggerInit() {
 	LStdout = log.New(os.Stdout, "\033[32m ", log.Ldate|log.Ltime)
@@ -50,23 +41,25 @@ func loggerInit() {
 }
 
 func listenNotifyEvents(dsn string, consumerName string) {
-	listener = pq.NewListener(dsn, time.Second*1, time.Second*120, func(event pq.ListenerEventType, err error) {
-		if event == pq.ListenerEventConnected {
-			LStdout.Println("pq listener connected")
-		}
-		if event == pq.ListenerEventConnectionAttemptFailed {
-			LStderr.Println("pq listener connection attempt failed")
-		}
-		if event == pq.ListenerEventDisconnected {
-			LStdout.Println("pq listener disconnected")
-		}
-		if event == pq.ListenerEventReconnected {
-			LStdout.Println("pq listener reconnected")
-		}
-		if err != nil {
-			LStderr.Println(err.Error())
-		}
-	})
+	listener = pq.NewListener(dsn,
+		time.Second*time.Duration(cfg.NotifyListener.MinReconnectInterval),
+		time.Second*time.Duration(cfg.NotifyListener.MaxReconnectInterval), func(event pq.ListenerEventType, err error) {
+			if event == pq.ListenerEventConnected {
+				LStdout.Println("pq listener connected")
+			}
+			if event == pq.ListenerEventConnectionAttemptFailed {
+				LStderr.Println("pq listener connection attempt failed")
+			}
+			if event == pq.ListenerEventDisconnected {
+				LStdout.Println("pq listener disconnected")
+			}
+			if event == pq.ListenerEventReconnected {
+				LStdout.Println("pq listener reconnected")
+			}
+			if err != nil {
+				LStderr.Println(err.Error())
+			}
+		})
 	for k := range events {
 		if err := listener.Listen(events[k]); err != nil {
 			LStderr.Println(err.Error())
@@ -143,14 +136,19 @@ func registerHandlers(mux *http.ServeMux, handlers map[string]http.HandlerFunc) 
 }
 
 func main() {
-	sched = &Scheduler{MaxConcurrentTasks: 9, TaskDeadline: 120, RetryAfter: time.Second * 9}
+	cfg = Config{}
+	loadConfig(&cfg)
+	sched = &Scheduler{
+		MaxConcurrentTasks: cfg.TaskRunner.MaxConcurrentTasks,
+		TaskDeadline:       time.Duration(cfg.TaskRunner.TaskDeadline),
+		RetryAfter:         time.Second * time.Duration(cfg.TaskRunner.RetryAfter)}
 	sched.DefinedTasks = make(map[string]Task)
 	MapTask()
 	loggerInit()
 	defineFlags()
 	flag.Parse()
 	events = strings.Split(eventsFlag, ",")
-	events = append(events, []string{Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09}...)
+	events = append(events, (cfg).Channels...)
 	sigInt := make(chan os.Signal, 1)
 	signal.Notify(sigInt, os.Interrupt)
 	mux := new(http.ServeMux)
